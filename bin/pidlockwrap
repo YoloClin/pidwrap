@@ -1,0 +1,35 @@
+#!/usr/bin/python3
+
+import os
+import psutil
+import subprocess
+import argparse
+
+parser = argparse.ArgumentParser(description="pid lockfile wrapper")
+parser.add_argument("-n", "--name", dest="name", action="store",
+                    required=True, help="Name of the service")
+parser.add_argument('rest', nargs=argparse.REMAINDER)
+
+args = parser.parse_args()
+
+if not os.path.exists("/tmp/pidwrap"):
+    os.mkdir("/tmp/pidwrap")
+
+lockfile = f"/tmp/pidwrap/{args.name}.pid"
+
+exists = False
+if os.path.exists(lockfile):
+    pid = open(lockfile).read().strip()
+    if psutil.pid_exists(int(pid)):
+        exists = True
+    else:
+        os.remove(lockfile)
+
+if not exists:
+    proc = subprocess.Popen(args.rest)
+    with open(lockfile, "w") as fhandle:
+        fhandle.write(f"{proc.pid}\n")
+    proc.wait()
+
+else:
+    print("Already running")
